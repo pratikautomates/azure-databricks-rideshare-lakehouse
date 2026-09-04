@@ -1,0 +1,101 @@
+{
+    "name": "Chicago2DL",
+    "properties": {
+        "activities": [
+            {
+                "name": "ForEach_January_pages",
+                "type": "ForEach",
+                "dependsOn": [],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@range(1,3)",
+                        "type": "Expression"
+                    },
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "Chicago data_copy1",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "JsonSource",
+                                    "storeSettings": {
+                                        "type": "HttpReadSettings",
+                                        "requestMethod": "POST",
+                                        "additionalHeaders": "X-App-Token: <SOCRATA_APP_TOKEN>\nContent-Type: application/json",
+                                        "requestBody": {
+                                            "value": "@{concat(\n'{',\n'\"query\":\"SELECT * WHERE `trip_start_timestamp` >= ''2025-01-01T00:00:00'' AND `trip_start_timestamp` < ''2025-02-01T00:00:00'' ORDER BY `trip_start_timestamp`, `trip_id`\",',\n'\"page\":{\"pageNumber\":', string(item()), ',\"pageSize\":50000},',\n'\"includeSynthetic\":false',\n'}'\n)}",
+                                            "type": "Expression"
+                                        },
+                                        "requestTimeout": "00:10:00"
+                                    },
+                                    "formatSettings": {
+                                        "type": "JsonReadSettings"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "ParquetSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "ParquetWriteSettings"
+                                    }
+                                },
+                                "enableStaging": false
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "chicago_dataset_src",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "c_start_date": "2025-01-01T00:00:00Z",
+                                        "c_end_date": "2025-02-01T00:00:00Z"
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "chicago_raw_sink",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "p_file_name": {
+                                            "value": "@concat(\n'chicago_rideshare_2025_01_page_',\nstring(item()),\n'.parquet'\n)",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ],
+        "variables": {
+            "v_page_number": {
+                "type": "String",
+                "defaultValue": "1"
+            },
+            "v_total_pages": {
+                "type": "String",
+                "defaultValue": "1"
+            },
+            "v_next_page": {
+                "type": "String"
+            }
+        },
+        "annotations": [],
+        "lastPublishTime": "2026-09-03T18:17:53Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
