@@ -14,7 +14,63 @@
 
 bronze_jan_path = (
     "abfss://bronze@chicagoridedl.dfs.core.windows.net/"
-    "trips/year=2025/month=01/"
+    "trips/year=2025/month=01/"# Databricks notebook source
+dbutils.fs.ls(
+    "abfss://lakehouse@chicagoridedl.dfs.core.windows.net/"
+)
+
+# COMMAND ----------
+
+dbutils.fs.cp(
+    "abfss://bronze@chicagoridedl.dfs.core.windows.net/trips/",
+    "abfss://lakehouse@chicagoridedl.dfs.core.windows.net/bronze/trips/",
+    recurse=True
+)
+
+# COMMAND ----------
+
+bronze_jan_path = (
+    "abfss://lakehouse@chicagoridedl.dfs.core.windows.net/"
+    "bronze/trips/year=2025/month=01/"
+)
+
+# COMMAND ----------
+
+files = dbutils.fs.ls(bronze_jan_path)
+
+parquet_files = [
+    f for f in files
+    if f.name.endswith(".parquet")
+]
+
+print("Parquet files:", len(parquet_files))
+
+# COMMAND ----------
+
+df_jan_new = spark.read.parquet(bronze_jan_path)
+
+# COMMAND ----------
+
+jan_count = df_jan_new.count()
+print("January rows:", jan_count)
+
+# COMMAND ----------
+
+expected_files = 153
+expected_rows = 7607290
+
+actual_files = len(parquet_files)
+actual_rows = df_jan_new.count()
+
+print(f"Expected files : {expected_files}")
+print(f"Actual files   : {actual_files}")
+print(f"Expected rows  : {expected_rows}")
+print(f"Actual rows    : {actual_rows}")
+
+if actual_files == expected_files and actual_rows == expected_rows:
+    print("✅ January migration validation PASSED")
+else:
+    print("❌ January migration validation FAILED")
 )
 
 # COMMAND ----------
