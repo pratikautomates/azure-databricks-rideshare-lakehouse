@@ -1,0 +1,275 @@
+{
+    "name": "pl_monthly_rideshare_ingestion",
+    "properties": {
+        "activities": [
+            {
+                "name": "ForEach_Month_Pages",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Set_Total_Pages",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@range(1, variables('v_total_pages'))",
+                        "type": "Expression"
+                    },
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "Check_Bronze_File_Exists",
+                            "type": "GetMetadata",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "dataset": {
+                                    "referenceName": "chicago_raw_sink",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "p_file_name": {
+                                            "value": "@concat(\n    'chicago_rideshare_',\n    pipeline().parameters.p_year,\n    '_',\n    pipeline().parameters.p_month,\n    '_',\n    pipeline().parameters.p_day,\n    '_page_',\n    string(item()),\n    '.parquet'\n)",
+                                            "type": "Expression"
+                                        },
+                                        "p_year": {
+                                            "value": "@pipeline().parameters.p_year",
+                                            "type": "Expression"
+                                        },
+                                        "p_month": {
+                                            "value": "@pipeline().parameters.p_month",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                },
+                                "fieldList": [
+                                    "exists"
+                                ],
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "ParquetReadSettings"
+                                }
+                            }
+                        },
+                        {
+                            "name": "If_Bronze_File_Missing",
+                            "type": "IfCondition",
+                            "dependsOn": [
+                                {
+                                    "activity": "Check_Bronze_File_Exists",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@equals(\n    activity('Check_Bronze_File_Exists').output.exists,\n    false\n)",
+                                    "type": "Expression"
+                                },
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "Chicago data_copy1_copy1",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 2,
+                                            "retryIntervalInSeconds": 120,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "JsonSource",
+                                                "storeSettings": {
+                                                    "type": "HttpReadSettings",
+                                                    "requestMethod": "POST",
+                                                    "additionalHeaders": "X-App-Token: <SOCRATA_APP_TOKEN>\nContent-Type: application/json",
+                                                    "requestBody": {
+                                                        "value": "@{concat(\n  '{',\n  '\"query\":\"SELECT * WHERE `trip_start_timestamp` >= ''',\n  replace(pipeline().parameters.p_start_date,'Z',''),\n  ''' AND `trip_start_timestamp` < ''',\n  replace(pipeline().parameters.p_end_date,'Z',''),\n  ''' ORDER BY `trip_start_timestamp`, `trip_id`\",',\n  '\"page\":{\"pageNumber\":',\n  string(item()),\n  ',\"pageSize\":',\n  string(pipeline().parameters.p_page_size),\n  '},',\n  '\"includeSynthetic\":false',\n  '}'\n)}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "requestTimeout": "00:10:00"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "JsonReadSettings"
+                                                }
+                                            },
+                                            "sink": {
+                                                "type": "ParquetSink",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSWriteSettings"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "ParquetWriteSettings"
+                                                }
+                                            },
+                                            "enableStaging": false
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "chicago_dataset_src",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "c_start_date": "2025-01-01T00:00:00Z",
+                                                    "c_end_date": "2025-02-01T00:00:00Z"
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "chicago_raw_sink",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "p_file_name": {
+                                                        "value": "@concat(\n    'chicago_rideshare_',\n    pipeline().parameters.p_year,\n    '_',\n    pipeline().parameters.p_month,\n    '_',\n    pipeline().parameters.p_day,\n    '_page_',\n    string(item()),\n    '.parquet'\n)",
+                                                        "type": "Expression"
+                                                    },
+                                                    "p_year": "@pipeline().parameters.p_year",
+                                                    "p_month": {
+                                                        "value": "@pipeline().parameters.p_month",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Get_Window_Row_Count",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "POST",
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "X-App-Token": "<SOCRATA_APP_TOKEN>"
+                    },
+                    "httpRequestTimeout": "00:10:00",
+                    "url": "https://data.cityofchicago.org/api/v3/views/6dvr-xwnh/query.json",
+                    "body": {
+                        "value": "@concat(\n  '{',\n  '\"query\":\"SELECT count(*) AS total_rows WHERE `trip_start_timestamp` >= ''',\n  replace(pipeline().parameters.p_start_date,'Z',''),\n  ''' AND `trip_start_timestamp` < ''',\n  replace(pipeline().parameters.p_end_date,'Z',''),\n  '''\",',\n  '\"includeSynthetic\":false',\n  '}'\n)",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set_Total_Rows",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get_Window_Row_Count",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "v_total_rows",
+                    "value": {
+                        "value": "@int(json(activity('Get_Window_Row_Count').output.Response)[0].total_rows)",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set_Total_Pages",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Set_Total_Rows",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "v_total_pages",
+                    "value": {
+                        "value": "@div(\n    add(\n        variables('v_total_rows'),\n        sub(pipeline().parameters.p_page_size, 1)\n    ),\n    pipeline().parameters.p_page_size\n)",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "p_year": {
+                "type": "string",
+                "defaultValue": "2025"
+            },
+            "p_month": {
+                "type": "string",
+                "defaultValue": "02"
+            },
+            "p_start_date": {
+                "type": "string",
+                "defaultValue": "2025-02-01T00:00:00Z"
+            },
+            "p_end_date": {
+                "type": "string",
+                "defaultValue": "2025-03-01T00:00:00Z"
+            },
+            "p_page_size": {
+                "type": "int",
+                "defaultValue": 50000
+            },
+            "p_day": {
+                "type": "string",
+                "defaultValue": "01"
+            }
+        },
+        "variables": {
+            "v_total_rows": {
+                "type": "Integer",
+                "defaultValue": 0
+            },
+            "v_total_pages": {
+                "type": "Integer",
+                "defaultValue": 0
+            }
+        },
+        "annotations": [],
+        "lastPublishTime": "2026-09-10T10:23:29Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
