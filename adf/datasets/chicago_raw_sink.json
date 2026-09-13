@@ -1,0 +1,39 @@
+{
+    "name": "chicago_raw_sink",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "DLStorage",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "p_file_name": {
+                "type": "string"
+            },
+            "p_year": {
+                "type": "string"
+            },
+            "p_month": {
+                "type": "string"
+            }
+        },
+        "annotations": [],
+        "type": "Parquet",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "fileName": {
+                    "value": "@dataset().p_file_name",
+                    "type": "Expression"
+                },
+                "folderPath": {
+                    "value": "@concat(\n    'bronze/trips/year=',\n    dataset().p_year,\n    '/month=',\n    dataset().p_month\n)",
+                    "type": "Expression"
+                },
+                "fileSystem": "lakehouse"
+            },
+            "compressionCodec": "snappy"
+        },
+        "schema": []
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}
