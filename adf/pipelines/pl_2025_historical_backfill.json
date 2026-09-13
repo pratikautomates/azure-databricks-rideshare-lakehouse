@@ -1,0 +1,65 @@
+{
+    "name": "pl_2025_historical_backfill",
+    "properties": {
+        "activities": [
+            {
+                "name": "ForEach_Date",
+                "type": "ForEach",
+                "dependsOn": [],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@range(0,334)",
+                        "type": "Expression"
+                    },
+                    "isSequential": false,
+                    "batchCount": 4,
+                    "activities": [
+                        {
+                            "name": "Run_Monthly_Ingestion",
+                            "type": "ExecutePipeline",
+                            "dependsOn": [],
+                            "policy": {
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "pipeline": {
+                                    "referenceName": "pl_monthly_rideshare_ingestion",
+                                    "type": "PipelineReference"
+                                },
+                                "waitOnCompletion": true,
+                                "parameters": {
+                                    "p_year": {
+                                        "value": "@formatDateTime(\n    addDays('2025-02-01T00:00:00', item()),\n    'yyyy'\n)",
+                                        "type": "Expression"
+                                    },
+                                    "p_month": {
+                                        "value": "@formatDateTime(\n    addDays('2025-02-01T00:00:00', item()),\n    'MM'\n)",
+                                        "type": "Expression"
+                                    },
+                                    "p_start_date": {
+                                        "value": "@formatDateTime(\n    addDays('2025-02-01T00:00:00', item()),\n    'yyyy-MM-ddTHH:mm:ss'\n)",
+                                        "type": "Expression"
+                                    },
+                                    "p_end_date": {
+                                        "value": "@formatDateTime(\n    addDays('2025-02-01T00:00:00', add(item(),1)),\n    'yyyy-MM-ddTHH:mm:ss'\n)",
+                                        "type": "Expression"
+                                    },
+                                    "p_page_size": 50000,
+                                    "p_day": {
+                                        "value": "@formatDateTime(\n    addDays('2025-02-01T00:00:00', item()),\n    'dd'\n)",
+                                        "type": "Expression"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "annotations": [],
+        "lastPublishTime": "2026-09-10T12:43:04Z"
+    },
+    "type": "Microsoft.DataFactory/factories/pipelines"
+}
