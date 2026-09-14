@@ -278,9 +278,15 @@ Delta Lake output
 12 monthly partitions
 ```
 
+### Gold Layer
+
+✅ Completed and validated
+
+---
+
 ## Project Status
 
 - ✅ Bronze Layer — Completed and validated
 - ✅ Silver Layer — Completed and validated
-- 🚧 Gold Layer — In development
-- ⏳ Power BI — Planned
+- ✅ Gold Layer — Completed and validated
+- 🚧 Power BI — In development
